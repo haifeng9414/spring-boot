@@ -300,7 +300,11 @@ public class SpringApplication {
 		stopWatch.start();
 		ConfigurableApplicationContext context = null;
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
+		// 设置java.awt.headless系统属性为true
 		configureHeadlessProperty();
+		// 创建SpringApplicationRunListeners类，该类的成员变量List<SpringApplicationRunListener> listeners为从META-INF/spring.factories
+		// 解析而来的以SpringApplicationRunListener的全限定名为key的所有value反射得来的SpringApplicationRunListener，这些SpringApplicationRunListener
+		// 的构造函数参数为SpringApplication和String，反射时构造函数以this和args为参数
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
 		try {
@@ -423,8 +427,13 @@ public class SpringApplication {
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes, Object... args) {
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
+		// SpringFactoriesLoader.loadFactoryNames方法解析所有jar包下的META-INF/spring.factories文件内容，将该文件下的
+		// 配置转换为Map，这里以指定的type的类名为key，获取解析到的Map中的value
 		Set<String> names = new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(type, classLoader));
+		// 获取到的names就是以type的类名为key在META-INF/spring.factories文件中找到的一些类的全限定名称，这里根据这些类的全限定名称反射创建这些类
+		// 反射的类型为type，构造函数由parameterTypes确定，反射时的参数为args
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names);
+		// 根据类上的Order注解进行排序
 		AnnotationAwareOrderComparator.sort(instances);
 		return instances;
 	}
