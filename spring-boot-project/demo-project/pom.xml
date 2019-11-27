@@ -53,12 +53,6 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-
-		<!-- 测试用 -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-loader</artifactId>
-		</dependency>
 	</dependencies>
 
 	<build>

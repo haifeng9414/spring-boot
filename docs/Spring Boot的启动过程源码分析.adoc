@@ -1,1 +1,70 @@
-todo
+= Spring Boot应用程序启动过程
+
+
+
+一个经典的Spring Boot项目的代码结构如下：
+[indent=0]
+----
+.
+├── pom.xml
+└── src
+    ├── main
+    │   ├── java
+    │   │   └── org
+    │   │       └── springframework
+    │   │           └── boot
+    │   │               └── demo
+    │   │                   ├── DemoApplication.java
+    │   │                   └── controller
+    │   │                       └── DemoController.java
+    │   └── resources
+    │       └── application.yaml
+    └── test
+        └── java
+            └── org
+                └── springframework
+                    └── boot
+                        └── AppTest.java
+
+
+----
+
+``pom.xml``文件包含了Spring Boot的依赖，配置如下：
+[source,xml]
+----
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter</artifactId>
+</dependency>
+<!-- 如果启动项目时想要启动一个服务器则添加下面的依赖 -->
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-web</artifactId>
+  <exclusions>
+    <exclusion>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-tomcat</artifactId>
+    </exclusion>
+  </exclusions>
+</dependency>
+<!-- 如果想要使用jetty而不是tomcat，则在上面排除tomcat的starter并在这里添加jetty的依赖即可 -->
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-jetty</artifactId>
+</dependency>
+----
+
+项目的源码路径中最上层的是Application类，该类一般源码如下：
+[source,java]
+----
+@SpringBootApplication
+public class DemoApplication {
+	public static void main(String[] args) {
+		SpringApplication.run(DemoApplication.class, args);
+	}
+}
+----
+
+直接运行``main``函数或将项目打包成fat jar用``java -jar``命令执行即可启动项目，上面的配置启动后会自动运行一个jetty服务器，并已经解析好了项目中的所有bean，下面分析Spring Boot是如何实现在如此简洁的配置下启动应用的
+
+
