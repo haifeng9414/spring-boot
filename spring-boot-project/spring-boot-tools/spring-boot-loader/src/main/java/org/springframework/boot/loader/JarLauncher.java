@@ -41,7 +41,9 @@ public class JarLauncher extends ExecutableArchiveLauncher {
 	}
 
 	@Override
+	// 判断指定的entry是否应该被添加到classpath中
 	protected boolean isNestedArchive(Archive.Entry entry) {
+		// 能添加到classpath的只有BOOT-INF/classes/文件夹下的类或BOOT-INF/lib/文件夹下的jar包
 		if (entry.isDirectory()) {
 			return entry.getName().equals(BOOT_INF_CLASSES);
 		}

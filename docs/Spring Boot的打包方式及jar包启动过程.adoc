@@ -1,0 +1,291 @@
+= Spring Boot的打包方式
+:img: resources
+
+Spring Boot打包好的jar包可以通过``java -jar``命令直接启动，如果是个web应用，则应用启动时也会自动启动一个服务器，下面分析实现原理
+
+== Spring Boot编译出来的jar包文件结构
+一个普通的Java程序可以通过Maven插件打包成一个可执行的jar：
+[source,xml]
+.pom.xml
+----
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>com.dhf.app.Application</mainClass>
+                    </manifest>
+                </archive>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+----
+
+打包完成的jar文件结构如下：
+[indent=0]
+.xxx.jar
+----
+.
+├── META-INF
+│   └── MANIFEST.MF
+└── com
+    └── dhf
+        └── app
+            └── Application.class
+----
+
+其中``MANIFEST.MF``文件内容如下：
+[source,MF]
+----
+Manifest-Version: 1.0
+Archiver-Version: Plexus Archiver
+Built-By: dhf
+Created-By: Apache Maven 3.6.1
+Build-Jdk: 1.8.0_191
+Main-Class: com.dhf.app.Application
+----
+
+可以看到，该文件有一个``Main-Class``属性，当执行``java -jar``命令时，会调用该属性指定的类的``main``函数，这就是一个普通的可执行jar的启动原理
+
+Spring Boot也是通过这种方式实现的jar包启动，但是上面的例子没有依赖其他的第三方jar包，如果依赖了则需要在执行``java -jar``命令时指定``-classpath``才能正常运行，而Spring Boot不需要，这是因为Spring Boot实现了jar in jar，打包出来的jar包中有其依赖的所有第三方jar包，这种jar也叫fat jar，打包一个fat jar包需要使用Spring Boot的一个Maven插件，配置如下：
+[source,xml]
+----
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>repackage</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+----
+
+执行``mvn package``即可得到Spring Boot jar，一个简单的Spring Boot jar文件结构：
+[indent=0]
+xxx.jar
+----
+.
+├── BOOT-INF
+│   ├── classes
+│   │   ├── application.yaml
+│   │   └── org
+│   │       └── springframework
+│   │           └── boot
+│   │               └── demo
+│   │                   ├── DemoApplication.class
+│   │                   └── controller
+│   │                       └── DemoController.class
+│   └── lib
+│       ├── 所有依赖的jar
+├── META-INF
+│   └── MANIFEST.MF
+└── org
+    └── springframework
+        └── boot
+            └── loader
+                ├── Spring Boot的spring-boot-loader模块类
+----
+
+其中``MANIFEST.MF``文件内容如下：
+[source,MF]
+----
+Manifest-Version: 1.0
+Implementation-Title: demo-project
+Automatic-Module-Name: demo.project
+Implementation-Version: 2.3.0.BUILD-SNAPSHOT
+Built-By: Spring
+Start-Class: org.springframework.boot.demo.DemoApplication
+Spring-Boot-Classes: BOOT-INF/classes/
+Spring-Boot-Lib: BOOT-INF/lib/
+Build-Jdk-Spec: 1.8
+Spring-Boot-Version: 2.3.0.BUILD-SNAPSHOT
+Created-By: Maven Jar Plugin 3.2.0
+Main-Class: org.springframework.boot.loader.JarLauncher
+----
+
+可以看到``Main-Class``属性值为Spring Boot中的类，执行``java -jar``命令时，执行的是该类的``main``函数，值得注意的是``MANIFEST.MF``文件中还有一个``Start-Class``属性，值为Spring Boot应用程序的Application类，上面的Spring Boot应用程序本身的类保存在``BOOT-INF/classes``文件夹下，而运行时所需要的依赖都保存在了``BOOT-INF/lib``文件夹下，所以运行时需要的东西已经准备就绪了，下面看这个fat jar的运行过程
+
+== Fat jar启动过程
+启动是从``org.springframework.boot.loader.JarLauncher``开始的，所以从该类的源码开始分析，这里先看该类的继承结构：
+
+image::{img}/JarLauncher.png[JarLauncher] 
+源码如下：
+[source,java]
+----
+public class JarLauncher extends ExecutableArchiveLauncher {
+
+	static final String BOOT_INF_CLASSES = "BOOT-INF/classes/";
+
+	static final String BOOT_INF_LIB = "BOOT-INF/lib/";
+
+	public JarLauncher() {
+	}
+
+	protected JarLauncher(Archive archive) {
+		super(archive);
+	}
+
+	@Override
+	// 判断指定的entry是否应该被添加到classpath中
+	protected boolean isNestedArchive(Archive.Entry entry) {
+		// 能添加到classpath的只有BOOT-INF/classes/文件夹下的类或BOOT-INF/lib/文件夹下的jar包
+		if (entry.isDirectory()) {
+			return entry.getName().equals(BOOT_INF_CLASSES);
+		}
+		return entry.getName().startsWith(BOOT_INF_LIB);
+	}
+
+	public static void main(String[] args) throws Exception {
+		new JarLauncher().launch(args);
+	}
+
+}
+----
+
+``JarLauncher``的``main``函数调用其``launch``方法启动应用，``launch``函数代码如下：
+[source,java]
+----
+protected void launch(String[] args) throws Exception {
+    JarFile.registerUrlProtocolHandler();
+    ClassLoader classLoader = createClassLoader(getClassPathArchives());
+    launch(args, getMainClass(), classLoader);
+}
+
+protected void launch(String[] args, String mainClass, ClassLoader classLoader) throws Exception {
+    Thread.currentThread().setContextClassLoader(classLoader);
+    createMainMethodRunner(mainClass, args, classLoader).run();
+}
+
+protected MainMethodRunner createMainMethodRunner(String mainClass, String[] args, ClassLoader classLoader) {
+    return new MainMethodRunner(mainClass, args);
+}
+----
+
+``launch``方法首先创建了一个``ClassLoader``，之后调用重载的launch方法，创建了``MainMethodRunner``对象并调用``run``方法，``MainMethodRunner``类的源码：
+[source,java]
+----
+public class MainMethodRunner {
+
+	private final String mainClassName;
+
+	private final String[] args;
+
+	public MainMethodRunner(String mainClass, String[] args) {
+		this.mainClassName = mainClass;
+		this.args = (args != null) ? args.clone() : null;
+	}
+
+	public void run() throws Exception {
+		// 加载mainClass，也就是Spring Boot项目中的Application的全限定名
+		Class<?> mainClass = Thread.currentThread().getContextClassLoader().loadClass(this.mainClassName);
+		Method mainMethod = mainClass.getDeclaredMethod("main", String[].class);
+		// 反射调用main函数
+		mainMethod.invoke(null, new Object[] { this.args });
+	}
+
+}
+----
+
+这样就启动了Spring Boot应用的Application，获取Application的类名和依赖的jar如何加载的需要回到最开始的``launch``方法，``launch``方法调用``getMainClass``方法获取Application的类名，该方法代码：
+[source,java]
+----
+protected String getMainClass() throws Exception {
+    Manifest manifest = this.archive.getManifest();
+    String mainClass = null;
+    if (manifest != null) {
+        mainClass = manifest.getMainAttributes().getValue("Start-Class");
+    }
+    if (mainClass == null) {
+        throw new IllegalStateException("No 'Start-Class' manifest entry specified in " + this);
+    }
+    return mainClass;
+}
+----
+
+可以看到，就是获取的``MANIFEST.MF``文件中的``Start-Class``属性，该属性值就是Application的类名
+
+对于依赖的jar的加载，``launch``方法创建了一个``classLoader``，代码：
+[source,java]
+----
+ClassLoader classLoader = createClassLoader(getClassPathArchives());
+
+protected ClassLoader createClassLoader(List<Archive> archives) throws Exception {
+    List<URL> urls = new ArrayList<>(archives.size());
+    for (Archive archive : archives) {
+        urls.add(archive.getUrl());
+    }
+    return createClassLoader(urls.toArray(new URL[0]));
+}
+
+protected ClassLoader createClassLoader(URL[] urls) throws Exception {
+    return new LaunchedURLClassLoader(urls, getClass().getClassLoader());
+}
+----
+
+创建``classLoader``的参数``List<Archive> archives``很明显就是那些依赖的jar，同时Spring Boot项目本身的类也应该在里面，``LaunchedURLClassLoader``以这些``Archive``对应的url为目标加载类，一个``Archive``表示的是一个jar文件或一个目录（如果是目录的话，目录下通常就是class文件），``Archive``是通过``getClassPathArchives``方法获取的，该方法代码：
+[source,java]
+----
+protected List<Archive> getClassPathArchives() throws Exception {
+    /*
+     this.archive为fat jar的JarFileArchive对象，getNestedArchives方法使用传入的this::isNestedArchive对fat jar下的内容进行过滤遍历
+     this::isNestedArchive在JarLauncher的实现是只留下BOOT-INF/classes/和BOOT-INF/lib/文件夹，所以这里返回的archives实际上是BOOT-INF/classes/
+     和BOOT-INF/lib/文件夹下对应的JarFileArchive，每个BOOT-INF/lib/文件夹下的jar对应一个JarFileArchive对象，而BOOT-INF/classes/文件夹直接作为
+     一个JarFileArchive对象，对fat jar文件内容的遍历过程涉及到了jar文件结构，这里就不分析了，最后archives列表可能是这样的：
+
+     0 = {JarFileArchive@1391} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/classes!/"
+     1 = {JarFileArchive@1392} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-boot-starter-2.3.0.BUILD-SNAPSHOT.jar!/"
+     2 = {JarFileArchive@1393} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-boot-2.3.0.BUILD-SNAPSHOT.jar!/"
+     3 = {JarFileArchive@1394} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-context-5.2.2.BUILD-SNAPSHOT.jar!/"
+     4 = {JarFileArchive@1395} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-boot-autoconfigure-2.3.0.BUILD-SNAPSHOT.jar!/"
+     ...
+     */
+
+    List<Archive> archives = new ArrayList<>(this.archive.getNestedArchives(this::isNestedArchive));
+    // 空方法
+    postProcessClassPathArchives(archives);
+    return archives;
+}
+----
+
+最后也是最关键的就在于``LaunchedURLClassLoader``的实现，``LaunchedURLClassLoader``已经拿到了Spring Boot应用程序的所有类文件所在目录的url和所有依赖的jar文件的url，那么``LaunchedURLClassLoader``在运行时是如何加载类的呢，可以看``LaunchedURLClassLoader``的继承结构：
+
+image:{img}/LaunchedURLClassLoader.png[LaunchedURLClassLoader]
+
+``LaunchedURLClassLoader``继承自``URLClassLoader``，而``URLClassLoader``能够从url加载类，``LaunchedURLClassLoader``在其构造函数中已经将所有的url传给了``URLClassLoader``，实际的类加载过程交给了``URLClassLoader``，而``URLClassLoader``在加载类时调用``URL``对象的``openConnection``方法获取``URLConnection``对象，再通过``URLConnection``对象获取``InputStream``实现类加载
+
+需要注意的是所有的url指定的资源都在fat jar内，而JDK自带的``JarEntry``是不支持jar in jar的，也就是无法获取jar包内的jar包中的资源，可以看到一个``Archive``对应的路径是：
+----
+jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-boot-starter-2.3.0.BUILD-SNAPSHOT.jar!/
+----
+
+Spring Boot继承了JDK的``JarEntry``，对jar in jar进行支持，在通过Spring Boot的``JarEntry``获取``URL``对象时，其设置了一个Spring Boot自己实现的``Handler``，代码：
+[source,java]
+----
+public URL getUrl() throws MalformedURLException {
+    if (this.url == null) {
+        Handler handler = new Handler(this);
+        String file = this.rootFile.getFile().toURI() + this.pathFromRoot + "!/";
+        file = file.replace("file:////", "file://"); // Fix UNC paths
+        this.url = new URL("jar", "", -1, file, handler);
+    }
+    return this.url;
+}
+----
+
+``URL``对象的``openConnection``方法实际上是委托``Handler``返回``URLConnection``，而Spring Boot自己实现的``Handler``返回的是``JarURLConnection``对象，该对象支持jar in jar，能够获取jar包内的jar的``InputStream``
+
+上面涉及到的多个对象的实现细节就不分析了，需要用到时再看源码
+
+
+

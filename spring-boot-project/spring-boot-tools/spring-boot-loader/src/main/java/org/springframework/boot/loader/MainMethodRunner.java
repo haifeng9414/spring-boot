@@ -43,8 +43,10 @@ public class MainMethodRunner {
 	}
 
 	public void run() throws Exception {
+		// 加载mainClass，也就是Spring Boot项目中的Application的全限定名
 		Class<?> mainClass = Thread.currentThread().getContextClassLoader().loadClass(this.mainClassName);
 		Method mainMethod = mainClass.getDeclaredMethod("main", String[].class);
+		// 反射调用main函数
 		mainMethod.invoke(null, new Object[] { this.args });
 	}
 

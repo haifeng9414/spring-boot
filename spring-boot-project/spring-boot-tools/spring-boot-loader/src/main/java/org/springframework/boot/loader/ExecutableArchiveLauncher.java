@@ -32,10 +32,12 @@ import org.springframework.boot.loader.archive.Archive;
  */
 public abstract class ExecutableArchiveLauncher extends Launcher {
 
+	// 一个Archive代表的是一个jar包或一个文件夹，Spring Boot可以从这个Archive启动
 	private final Archive archive;
 
 	public ExecutableArchiveLauncher() {
 		try {
+			// createArchive返回JarFileArchive对象，该对象的jarFile指向fat jar，url为fat jar的绝对路径
 			this.archive = createArchive();
 		}
 		catch (Exception ex) {
@@ -66,7 +68,22 @@ public abstract class ExecutableArchiveLauncher extends Launcher {
 
 	@Override
 	protected List<Archive> getClassPathArchives() throws Exception {
+		/*
+		 this.archive为fat jar的JarFileArchive对象，getNestedArchives方法使用传入的this::isNestedArchive对fat jar下的内容进行过滤遍历
+		 this::isNestedArchive在JarLauncher的实现是只留下BOOT-INF/classes/和BOOT-INF/lib/文件夹，所以这里返回的archives实际上是BOOT-INF/classes/
+		 和BOOT-INF/lib/文件夹下对应的JarFileArchive，每个BOOT-INF/lib/文件夹下的jar对应一个JarFileArchive对象，而BOOT-INF/classes/文件夹直接作为
+		 一个JarFileArchive对象，对fat jar文件内容的遍历过程涉及到了jar文件结构，这里就不分析了，最后archives的内容可能是这样的：
+
+		 0 = {JarFileArchive@1391} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/classes!/"
+		 1 = {JarFileArchive@1392} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-boot-starter-2.3.0.BUILD-SNAPSHOT.jar!/"
+		 2 = {JarFileArchive@1393} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-boot-2.3.0.BUILD-SNAPSHOT.jar!/"
+		 3 = {JarFileArchive@1394} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-context-5.2.2.BUILD-SNAPSHOT.jar!/"
+		 4 = {JarFileArchive@1395} "jar:file:/Users/dhf/IdeaProjects/spring-boot/spring-boot-project/demo-project/target/demo-project-2.3.0.BUILD-SNAPSHOT.jar!/BOOT-INF/lib/spring-boot-autoconfigure-2.3.0.BUILD-SNAPSHOT.jar!/"
+		 ...
+		 */
+
 		List<Archive> archives = new ArrayList<>(this.archive.getNestedArchives(this::isNestedArchive));
+		// 空方法
 		postProcessClassPathArchives(archives);
 		return archives;
 	}

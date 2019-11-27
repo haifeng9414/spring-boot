@@ -83,6 +83,7 @@ public abstract class Launcher {
 	 * @throws Exception if the launch fails
 	 */
 	protected void launch(String[] args, String mainClass, ClassLoader classLoader) throws Exception {
+		// 将classLoader设置为当前线程的classLoader
 		Thread.currentThread().setContextClassLoader(classLoader);
 		createMainMethodRunner(mainClass, args, classLoader).run();
 	}
@@ -113,6 +114,9 @@ public abstract class Launcher {
 	protected abstract List<Archive> getClassPathArchives() throws Exception;
 
 	protected final Archive createArchive() throws Exception {
+		// 获取一个可执行jar包的绝对路径可以使用ClassName.class.getProtectionDomain().getCodeSource().getLocation().getPath()
+		// 如/Users/dhf/IdeaProjects/algorithm/target/xxx.jar，如果直接在IDEA中执行main函数并在main函数中打印该值，则输出为/Users/dhf/IdeaProjects/algorithm/target/classes/
+		// 所以这里获取到的path实际上是fat jar的绝对路径
 		ProtectionDomain protectionDomain = getClass().getProtectionDomain();
 		CodeSource codeSource = protectionDomain.getCodeSource();
 		URI location = (codeSource != null) ? codeSource.getLocation().toURI() : null;
@@ -124,6 +128,7 @@ public abstract class Launcher {
 		if (!root.exists()) {
 			throw new IllegalStateException("Unable to determine code source archive from " + root);
 		}
+		// roo此时指向的就是fat jar，所以返回的是JarFileArchive
 		return (root.isDirectory() ? new ExplodedArchive(root) : new JarFileArchive(root));
 	}
 

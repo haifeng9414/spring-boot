@@ -3,7 +3,7 @@
 
 [qanda]
 如何实现的jar in jar及``java -jar``启动方式?::
-  link:{docs}/Spring%20Boot的打包方式.adoc[Spring Boot的打包方式]
+  link:{docs}/Spring%20Boot的打包方式及jar包启动过程.adoc[Spring Boot的打包方式及jar包启动过程]
 Spring Boot启动过程?::
 	link:{docs}/Spring%20Boot的启动过程源码分析.adoc[Spring Boot的启动过程源码分析]
 如何自定义starter及starter的工作原理::
