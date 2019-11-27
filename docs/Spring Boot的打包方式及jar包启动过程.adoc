@@ -233,7 +233,7 @@ protected ClassLoader createClassLoader(URL[] urls) throws Exception {
 }
 ----
 
-创建``classLoader``的参数``List<Archive> archives``很明显就是那些依赖的jar，同时Spring Boot项目本身的类也应该在里面，``LaunchedURLClassLoader``以这些``Archive``对应的url为目标加载类，一个``Archive``表示的是一个jar文件或一个目录（如果是目录的话，目录下通常就是class文件），``Archive``是通过``getClassPathArchives``方法获取的，该方法代码：
+创建``classLoader``的参数``List<Archive> archives``很明显就是那些依赖的jar，同时Spring Boot项目本身的类也应该在里面，``LaunchedURLClassLoader``以这些``Archive``对应的url为目标加载类，一个``Archive``表示的是一个jar文件或一个目录（如果是目录的话，目录下通常就是class文件），``Archive``是通过``getClassPathArchives``方法获取的，该方法代码：
 [source,java]
 ----
 protected List<Archive> getClassPathArchives() throws Exception {
