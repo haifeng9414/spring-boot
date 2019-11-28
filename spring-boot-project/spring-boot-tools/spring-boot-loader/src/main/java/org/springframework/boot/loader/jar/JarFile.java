@@ -405,6 +405,7 @@ public class JarFile extends java.util.jar.JarFile {
 	 */
 	private static void resetCachedUrlHandlers() {
 		try {
+			// 如方法注释所说，调用setURLStreamHandlerFactory是为了情况URL类中的handlers缓存
 			URL.setURLStreamHandlerFactory(null);
 		}
 		catch (Error ex) {

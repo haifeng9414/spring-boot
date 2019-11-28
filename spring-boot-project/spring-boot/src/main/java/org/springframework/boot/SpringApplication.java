@@ -419,7 +419,7 @@ public class SpringApplication {
 		// main函数所在类的Class对象
 		Set<Object> sources = getAllSources();
 		Assert.notEmpty(sources, "Sources must not be empty");
-		// 创建BeanDefinitionLoader对象，调用起load方法解析sources，默认情况下sources就是Spring Boot项目的
+		// 创建BeanDefinitionLoader对象，调用load方法解析sources，默认情况下sources就是Spring Boot项目的
 		// main函数所在类的Class对象，BeanDefinitionLoader对象对于Class对象的解析交由其成员变量AnnotatedBeanDefinitionReader
 		// 完成，而AnnotatedBeanDefinitionReader在其构造函数中调用了AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry)
 		// 该方法会添加多个实现了BeanFactoryPostProcessor接口或BeanPostProcessor接口的bean，其中一个非常重要的bean是ConfigurationClassPostProcessor

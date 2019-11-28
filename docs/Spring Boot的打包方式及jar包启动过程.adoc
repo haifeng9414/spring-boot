@@ -157,6 +157,10 @@ public class JarLauncher extends ExecutableArchiveLauncher {
 [source,java]
 ----
 protected void launch(String[] args) throws Exception {
+    // 注册Spring Boot自己实现的Handler，也就是URLStreamHandler抽象类的实现类，URLStreamHandler的作用是对URL的某种协议提供支持，用于获取指定协议的URLConnection对象
+    // 如jar:xxx这种协议，通过URLConnection能够获取InputStream。注册的原理是将自己的Handler所在的包设置到系统属性java.protocol.handler.pkgs中，当对URL协议进行解析时，
+    // JDK会使用[package_path].[protocol].Handler的形式获取实现类，可以看到Spring Boot自己实现的Handler在org.springframework.boot.loader包下的jar下，
+    // 这里将org.springframework.boot.loader添加到系统属性java.protocol.handler.pkgs中，多个包用|分割，可以看URL类的getURLStreamHandler方法的实现
     JarFile.registerUrlProtocolHandler();
     ClassLoader classLoader = createClassLoader(getClassPathArchives());
     launch(args, getMainClass(), classLoader);
