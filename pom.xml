@@ -70,7 +70,7 @@
 								<id>nohttp-checkstyle-validation</id>
 								<phase>validate</phase>
 								<configuration>
-									<skip>${disable.checks}</skip>
+									<skip>true</skip>
 									<configLocation>src/checkstyle/nohttp-checkstyle.xml</configLocation>
 									<suppressionsLocation>src/checkstyle/nohttp-checkstyle-suppressions.xml</suppressionsLocation>
 									<propertyExpansion>main.basedir=${main.basedir}</propertyExpansion>
@@ -94,7 +94,7 @@
 							<execution>
 								<phase>validate</phase>
 								<configuration>
-									<skip>${disable.checks}</skip>
+									<skip>true</skip>
 								</configuration>
 								<goals>
 									<goal>validate</goal>

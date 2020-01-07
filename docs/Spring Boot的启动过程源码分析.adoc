@@ -1,6 +1,6 @@
 = Spring Boot应用程序启动过程
 
-NOTE: 这里只分析Spring Boot项目的Application类的``main``函数运行后的启动过程，在这之前Spring Boot的启动过程在link:Spring%20Boot的打包方式及jar包启动过程.adoc[Spring Boot的打包方式及jar包启动过程]
+NOTE: 这里只分析Spring Boot项目的Application类的``main``函数运行后的启动过程，在这之前Spring Boot的启动过程在link:Spring%20Boot的打包方式及jar包启动过程.adoc[Spring Boot的打包方式及jar包启动过程]
 
 一个经典的Spring Boot项目的代码结构如下：
 [indent=0]
