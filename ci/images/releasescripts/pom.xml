@@ -76,7 +76,7 @@
 					<execution>
 						<phase>validate</phase>
 						<configuration>
-							<skip>${disable.checks}</skip>
+							<skip>true</skip>
 						</configuration>
 						<goals>
 							<goal>validate</goal>
