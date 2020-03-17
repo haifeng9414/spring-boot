@@ -6,4 +6,4 @@ message=${1:-'添加笔记'}
 
 git add .
 git commit -am "$message"
-git push master
+git push -f -u origin master
